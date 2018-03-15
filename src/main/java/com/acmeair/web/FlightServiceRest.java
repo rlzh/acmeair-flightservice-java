@@ -19,22 +19,18 @@ package com.acmeair.web;
 import com.acmeair.securityutils.SecurityUtils;
 import com.acmeair.service.FlightService;
 
-import java.io.StringReader;
 import java.text.ParseException;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.List;
-import java.util.Locale;
 
 import javax.inject.Inject;
+
 import javax.json.Json;
-import javax.json.JsonArray;
 import javax.json.JsonBuilderFactory;
-import javax.json.JsonReader;
-import javax.json.JsonReaderFactory;
+import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
@@ -44,32 +40,35 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Response;
 
-import org.eclipse.microprofile.metrics.annotation.Timed;
-
 @Path("/")
 public class FlightServiceRest {
+
+  private static final JsonBuilderFactory factory = Json.createBuilderFactory(null);
+  private static final int year =  Calendar.getInstance().get(Calendar.YEAR);
   
+  private static final Boolean SECURE_SERVICE_CALLS = 
+          Boolean.valueOf((System.getenv("SECURE_SERVICE_CALLS") == null) ? "false" 
+                  : System.getenv("SECURE_SERVICE_CALLS"));
+    
+  static {
+    System.out.println("SECURE_SERVICE_CALLS: " + SECURE_SERVICE_CALLS);
+  }
+    
   @Inject
   private FlightService flightService;
     
   @Inject
   private SecurityUtils secUtils;
   
-  private static final JsonReaderFactory jsonReaderFactory = Json.createReaderFactory(null);
-  private static final JsonBuilderFactory jsonObjectFactory  = Json.createBuilderFactory(null);
-  
-  private static final int year =  Calendar.getInstance().get(Calendar.YEAR);
   /**
    * Get flights.
    */
   // Had to change Dates to strings + extra processing below because 
   // Payara did not handle the Dates well.
-  
   @POST
   @Path("/queryflights")
   @Consumes({"application/x-www-form-urlencoded"})
   @Produces("text/plain")
-  @Timed(name = "com.acmeair.web.FlightServiceRest.getTripFlights", tags = "app=flightservice-java")
   public String getTripFlights(
           @FormParam("fromAirport") String fromAirport,
           @FormParam("toAirport") String toAirport,
@@ -78,14 +77,55 @@ public class FlightServiceRest {
           @FormParam("oneWay") boolean oneWay
   ) throws ParseException {
 
-    if (!flightService.isPopulated()) {
-      throw new RuntimeException("Flight DB has not been populated");
+    String options = "";
+
+    // convert date to local timezone
+    Calendar tempDate = new GregorianCalendar();
+   
+    SimpleDateFormat sdf = new SimpleDateFormat("E MMM dd");   
+    tempDate.setTime(sdf.parse(fromDate.substring(0,10)));
+    
+    // reset hour, minutes, seconds and millis
+    tempDate.set(Calendar.HOUR_OF_DAY, 0);
+    tempDate.set(Calendar.MINUTE, 0);
+    tempDate.set(Calendar.SECOND, 0);
+    tempDate.set(Calendar.MILLISECOND, 0);
+    tempDate.set(Calendar.YEAR, year);
+
+    List<String> toFlights = flightService.getFlightByAirportsAndDepartureDate(fromAirport, 
+            toAirport, tempDate.getTime());
+
+    if (!oneWay) {
+      // convert date to local timezone
+      tempDate.setTime(sdf.parse(returnDate.substring(0,10)));
+      
+      // reset hour, minutes, seconds and millis
+      tempDate.set(Calendar.HOUR_OF_DAY, 0);
+      tempDate.set(Calendar.MINUTE, 0);
+      tempDate.set(Calendar.SECOND, 0);
+      tempDate.set(Calendar.MILLISECOND, 0);
+      tempDate.set(Calendar.YEAR, year);
+      
+      List<String> retFlights = flightService.getFlightByAirportsAndDepartureDate(toAirport, 
+              fromAirport, tempDate.getTime());
+        
+      // TODO: Why are we doing it like this?
+      options = "{\"tripFlights\":"  
+              + "[{\"numPages\":1,\"flightsOptions\": " 
+              + toFlights 
+              + ",\"currentPage\":0,\"hasMoreOptions\":false,\"pageSize\":10}, " 
+              + "{\"numPages\":1,\"flightsOptions\": " 
+              + retFlights 
+              + ",\"currentPage\":0,\"hasMoreOptions\":false,\"pageSize\":10}], " 
+              + "\"tripLegs\":2}";
+    } else {
+      options = "{\"tripFlights\":" 
+              + "[{\"numPages\":1,\"flightsOptions\": " 
+              + toFlights 
+              + ",\"currentPage\":0,\"hasMoreOptions\":false,\"pageSize\":10}], " 
+              + "\"tripLegs\":1}";
     }
-    
-    Date fromDateAsDate = convertStringToDate(fromDate);
-    Date returnDateAsDate = convertStringToDate(returnDate);
-    
-    return getFlightOptions(fromAirport,toAirport,fromDateAsDate,returnDateAsDate,oneWay);
+    return options;
   }
 
   /**
@@ -95,112 +135,28 @@ public class FlightServiceRest {
   @Path("/getrewardmiles")
   @Consumes({"application/x-www-form-urlencoded"})
   @Produces("application/json")
-  @Timed(name = "com.acmeair.web.FlightServiceRest.getRewardsMiles", 
-      tags = "app=flightservice-java")
-  public MilesResponse getRewardMiles(
+  public Response getRewardMiles(
           @HeaderParam("acmeair-id") String headerId,
           @HeaderParam("acmeair-date") String headerDate,
           @HeaderParam("acmeair-sig-body") String headerSigBody, 
           @HeaderParam("acmeair-signature") String headerSig,
           @FormParam("flightSegment") String segmentId
   ) {
-    if (secUtils.secureServiceCalls()) { 
+    if (SECURE_SERVICE_CALLS) { 
       String body = "flightSegment=" + segmentId;
       secUtils.verifyBodyHash(body, headerSigBody);
-      secUtils.verifyFullSignature("POST", "/getrewardmiles", headerId, headerDate,
+      secUtils.verifyFullSignature("POST", "/getrewardmiles",headerId,headerDate,
               headerSigBody,headerSig);
     }
 
     Long miles = flightService.getRewardMiles(segmentId); 
-   
-    return new MilesResponse(miles);
+    JsonObjectBuilder job = factory.createObjectBuilder();
+    JsonObject value = job.add("miles", miles).build();
+    return Response.ok(value.toString()).build();
   }
 
   @GET
   public Response checkStatus() {
     return Response.ok("OK").build();        
-  } 
-  
-  private String getFlightOptions(String fromAirport, String toAirport, Date fromDate, 
-      Date returnDate, boolean oneWay) {
-            
-    // Get list of toflights as Json Array
-    List<String> toFlights = flightService.getFlightByAirportsAndDepartureDate(fromAirport, 
-        toAirport, fromDate);
-    JsonArray toFlightsJsonArray = convertFlightListToJsonArray(toFlights);
-
-    String options;
-    
-    if (oneWay) {
-      options = jsonObjectFactory.createObjectBuilder()
-          .add("tripFlights", jsonObjectFactory.createArrayBuilder()
-          .add(jsonObjectFactory.createObjectBuilder()
-              .add("numPages", 1)
-              .add("flightsOptions", toFlightsJsonArray)
-              .add("currentPage", 0)
-              .add("hasMoreOptions", false)
-              .add("pageSize", 10)))
-          .add("tripLegs", 1)
-          .build().toString();
-    } else { 
-      // Get list of returnflights as Json Array
-      List<String> retFlights = flightService.getFlightByAirportsAndDepartureDate(toAirport, 
-          fromAirport, returnDate);
-      JsonArray retFlightsJsonArray = convertFlightListToJsonArray(retFlights);
-      
-      options = jsonObjectFactory.createObjectBuilder()
-          .add("tripFlights", jsonObjectFactory.createArrayBuilder()
-              .add(jsonObjectFactory.createObjectBuilder()
-                  .add("numPages", 1)
-                  .add("flightsOptions", toFlightsJsonArray)
-                  .add("currentPage", 0)
-                  .add("hasMoreOptions", false)
-                  .add("pageSize", 10))
-              .add(jsonObjectFactory.createObjectBuilder()
-                  .add("numPages", 1)
-                  .add("flightsOptions", retFlightsJsonArray)
-                  .add("currentPage", 0)
-                  .add("hasMoreOptions", false)
-                  .add("pageSize", 10)))
-          .add("tripLegs", 2)
-          .build().toString();
-    }
-
-    return options;
-  }
-    
-  private JsonArray convertFlightListToJsonArray(List<String> flights) {
-    
-    if (flights == null) {
-      // empty array
-      return jsonObjectFactory.createArrayBuilder().build();
-    }
-    
-    JsonReader jsonReader = jsonReaderFactory.createReader(new StringReader(flights.toString()));
-    JsonArray  flightsJsonArray = jsonReader.readArray();
-    jsonReader.close();
-
-    return flightsJsonArray;
-  }
-
-  private Date convertStringToDate(String stringDate) {  
-    
-    if (stringDate == null) {
-      return null;
-    }
-    
-    try {
-    
-      DateTimeFormatter formatter = 
-          DateTimeFormatter.ofPattern("E MMM dd yyyy", Locale.getDefault());
-      
-      LocalDate date = LocalDate.parse(stringDate.substring(0,10) + " " + year, formatter); 
-    
-      return Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant());
-    
-    } catch (Exception e) {
-      e.printStackTrace();
-      return null;
-    }
   }
 }

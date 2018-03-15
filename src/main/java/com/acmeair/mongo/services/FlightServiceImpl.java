@@ -38,7 +38,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.annotation.PostConstruct;
-import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.json.Json;
 import javax.json.JsonObject;
@@ -47,7 +46,6 @@ import javax.json.JsonReaderFactory;
 
 import org.bson.Document;
 
-@ApplicationScoped
 public class FlightServiceImpl extends FlightService implements  MongoConstants {
 
   private static final Logger logger = Logger.getLogger(FlightServiceImpl.class.getName()); 
@@ -57,20 +55,15 @@ public class FlightServiceImpl extends FlightService implements  MongoConstants 
   private MongoCollection<Document> flightSegment;
   private MongoCollection<Document> airportCodeMapping;
   
-  private Boolean isPopulated = false;
-  
   @Inject
   KeyGenerator keyGenerator;
 
-  @Inject
-  ConnectionManager connectionManager;
-  
   /**
    * Init mongo db.
    */
   @PostConstruct
   public void initialization() {
-    MongoDatabase database = connectionManager.getDb();
+    MongoDatabase database = ConnectionManager.getConnectionManager().getDb();
     flight = database.getCollection("flight");
     flightSegment = database.getCollection("flightSegment");
     airportCodeMapping = database.getCollection("airportCodeMapping");
@@ -171,9 +164,8 @@ public class FlightServiceImpl extends FlightService implements  MongoConstants 
           if (logger.isLoggable(Level.FINE)) {
             logger.fine("getFlghtBySegment after : " + tempDoc.toJson());
           }
-          
+
           flights.add(tempDoc.toJson());
-         
         }
       } finally {
         cursor.close();
@@ -255,19 +247,5 @@ public class FlightServiceImpl extends FlightService implements  MongoConstants 
   @Override
   public String getServiceType() {
     return "mongo";
-  }
-
-  @Override
-  public boolean isPopulated() {
-    if (isPopulated) {
-      return true;
-    }
-        
-    if (flight.count() > 0) {
-      isPopulated = true;
-      return true;
-    } else {
-      return false;
-    }
   }
 }

@@ -69,7 +69,7 @@ public class FlightLoader {
    * Loads the db with flights.
    */
   public void loadFlights() throws Exception {
-    InputStream csvInputStream = FlightLoader.class.getResourceAsStream("/META-INF/mileage.csv");
+    InputStream csvInputStream = FlightLoader.class.getResourceAsStream("/mileage.csv");
 
     LineNumberReader lnr = new LineNumberReader(new InputStreamReader(csvInputStream));
     String line1 = lnr.readLine();

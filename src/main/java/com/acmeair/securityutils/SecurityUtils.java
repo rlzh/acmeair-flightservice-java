@@ -24,17 +24,11 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 
-import javax.annotation.PostConstruct;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response.Status;
 
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-
-@ApplicationScoped
 public class SecurityUtils {
         
   // TODO: Hardcode for now
@@ -45,17 +39,8 @@ public class SecurityUtils {
   private static final String UTF8 = "UTF-8";
 
   private static Mac macCached = null;
-    
-  /* microprofile-1.1 */
-  @Inject 
-  @ConfigProperty(name = "SECURE_SERVICE_CALLS", defaultValue = "true") 
-  private Boolean secureServiceCalls;
   
-  @PostConstruct
-  private void initialize() {
-    
-    System.out.println("SECURE_SERVICE_CALLS: " + secureServiceCalls);
-    
+  static {
     // Cache MAC to avoid cost of getInstance/init.
     try {
       macCached = Mac.getInstance(HMAC_ALGORITHM);
@@ -63,10 +48,6 @@ public class SecurityUtils {
     } catch (Exception e) {
       e.printStackTrace();
     }
-  }
-  
-  public boolean secureServiceCalls() {
-    return secureServiceCalls;
   }
         
   /**

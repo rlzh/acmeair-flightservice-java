@@ -8,26 +8,16 @@ spec:
     metadata:
       labels:
         name: flight-deployment
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "9080"
     spec:
       containers:
       - name: flightservice-java
         image: flightservice-java:latest
         ports:
           - containerPort: 9080
-          - containerPort: 9443
         imagePullPolicy: IfNotPresent
         env:
-        - name: USERNAME
-          value: admin
-        - name: PASSWORD
-          value: password
         - name: MONGO_HOST
           value: flight-db
-        - name: SECURE_SERVICE_CALLS
-          value: 'true'
         - name: MB_KEYSTORE_PASSWORD
           valueFrom:
             secretKeyRef:
@@ -47,18 +37,6 @@ spec:
             readOnly: true
           - name: liberty-config
             mountPath: /config/configDropins
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 9080
-          initialDelaySeconds: 10
-          periodSeconds: 5
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 9080
-          initialDelaySeconds: 120
-          periodSeconds: 15
       volumes:
         - name: keystores
           secret:

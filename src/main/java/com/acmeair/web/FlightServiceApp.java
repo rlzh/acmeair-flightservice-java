@@ -30,6 +30,6 @@ import javax.ws.rs.core.Application;
 public class FlightServiceApp extends Application {
   public Set<Class<?>> getClasses() {
     return new HashSet<Class<?>>(Arrays.asList(FlightServiceRest.class,
-            FlightConfiguration.class, FlightLoaderRest.class,HealthCheckRest.class));
+            FlightConfiguration.class, FlightLoaderRest.class));
   }
 }

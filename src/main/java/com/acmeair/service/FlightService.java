@@ -18,33 +18,61 @@ package com.acmeair.service;
 
 import com.acmeair.AirportCodeMapping;
 
+import java.io.FileInputStream;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.annotation.PostConstruct;
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.json.JsonReaderFactory;
 
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-
-@ApplicationScoped
 public abstract class FlightService {
     
-  @Inject 
-  @ConfigProperty(name = "USE_FLIGHT_DATA_RELATED_CACHING", defaultValue="true") 
-  protected Boolean useFlightDataRelatedCaching;
- 
   private static final JsonReaderFactory factory = Json.createReaderFactory(null);
-  protected static final Logger logger =  Logger.getLogger(FlightService.class.getName());  
+    
+  protected FlightService() {
+    if (useFlightDataRelatedCaching == null) {
+      Properties properties = new Properties();
+      try {
+        String acmeairProps = System.getenv("ACMEAIR_PROPERTIES");
+        if (acmeairProps != null) {
+          System.out.println("Loading properties : " + acmeairProps);
+          properties.load(new FileInputStream(acmeairProps));
+          useFlightDataRelatedCaching = Boolean.parseBoolean(properties
+                  .getProperty("userFlightDataRelatedCaching"));
+          System.out.println("useFlightDataRelatedCaching : " + useFlightDataRelatedCaching);
+          
+        } else if (System.getenv("USE_FLIGHT_DATA_RELATED_CACHING") != null) {
+          System.out.println("Found env variable USE_FLIGHT_DATA_RELATED_CACHING");
+          useFlightDataRelatedCaching = Boolean.parseBoolean(System
+                  .getenv("USE_FLIGHT_DATA_RELATED_CACHING"));
+          System.out.println("useFlightDataRelatedCaching : " + useFlightDataRelatedCaching);
+          
+        } else {
+          System.out.println("Neither ACMEAIR_PROPERTIES or USE_FLIGHT_DATA_RELATED_CACHING "
+                  + "environment variables are set. Enabling Caching. To disable caching, use "
+                  + "Environment variable ACMEAIR_PROPERTIES or USE_FLIGHT_DATA_RELATED_CACHING");
+          useFlightDataRelatedCaching = true;
+          
+        }
+      } catch (Exception e) {
+        System.out.println("ACMEAIR_PROPERTIES error. Check for below log");
+        e.printStackTrace();
+      }
+    }
+  }
+
+  protected static final Logger logger =  Logger.getLogger(FlightService.class.getName());
+  
+  protected static Boolean useFlightDataRelatedCaching = null;
+  protected static String acmeairDir = "";
 
   // TODO:need to find a way to invalidate these maps
   protected static ConcurrentHashMap<String, String> originAndDestPortToSegmentCache = 
@@ -55,11 +83,7 @@ public abstract class FlightService {
           new ConcurrentHashMap<String, String>();
   protected static ConcurrentHashMap<String, Long> flightSegmentIdtoRewardsCache = 
           new ConcurrentHashMap<String, Long>();
-    
-  @PostConstruct
-  protected void init() {
-    System.out.println("useFlightDataRelatedCaching : " + useFlightDataRelatedCaching);
-  }
+  
   
   /**
    * Get flight.
@@ -240,7 +264,4 @@ public abstract class FlightService {
     }
         
   }
-
-
-  public abstract boolean isPopulated();
 }
