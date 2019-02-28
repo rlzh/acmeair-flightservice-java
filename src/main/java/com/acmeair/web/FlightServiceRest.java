@@ -73,8 +73,8 @@ public class FlightServiceRest {
   public String getTripFlights(
           @FormParam("fromAirport") String fromAirport,
           @FormParam("toAirport") String toAirport,
-          @FormParam("fromDate") String fromDate,
-          @FormParam("returnDate") String returnDate,
+          @FormParam("fromDate") Date fromDate,
+          @FormParam("returnDate") Date returnDate,
           @FormParam("oneWay") boolean oneWay
   ) throws ParseException {
 
@@ -82,10 +82,10 @@ public class FlightServiceRest {
       throw new RuntimeException("Flight DB has not been populated");
     }
     
-    Date fromDateAsDate = convertStringToDate(fromDate);
-    Date returnDateAsDate = convertStringToDate(returnDate);
+    //Date fromDateAsDate = convertStringToDate(fromDate);
+    //Date returnDateAsDate = convertStringToDate(returnDate);
     
-    return getFlightOptions(fromAirport,toAirport,fromDateAsDate,returnDateAsDate,oneWay);
+    return getFlightOptions(fromAirport,toAirport,fromDate,returnDate,oneWay);
   }
 
   /**

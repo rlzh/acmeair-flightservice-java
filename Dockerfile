@@ -1,7 +1,5 @@
-FROM websphere-liberty:microProfile
+FROM websphere-liberty:microProfile1
 # Install opentracing usr feature
-RUN wget -t 10 -x -nd -P /opt/ibm/wlp/usr https://repo1.maven.org/maven2/net/wasdev/wlp/tracer/liberty-opentracing-zipkintracer/1.0/liberty-opentracing-zipkintracer-1.0-sample.zip && cd /opt/ibm/wlp/usr && unzip liberty-opentracing-zipkintracer-1.0-sample.zip && rm liberty-opentracing-zipkintracer-1.0-sample.zip
-
 COPY server.xml /config/server.xml
 
 # Don't fail on rc 22 feature already installed
@@ -10,4 +8,12 @@ RUN installUtility install --acceptLicense defaultServer || if [ $? -ne 22 ]; th
 COPY jvm.options /config/jvm.options
 
 COPY target/acmeair-flightservice-java-2.0.0-SNAPSHOT.war /config/apps/
+
+
+USER root
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y tzdata && ln -fs /usr/share/zoneinfo/America/Chicago /etc/localtime && dpkg-reconfigure --frontend noninteractive tzdata
+USER 1001
+
+RUN server start && server stop
 
