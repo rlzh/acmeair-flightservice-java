@@ -16,9 +16,26 @@
 
 package com.acmeair.web;
 
+import java.util.HashSet;
+import java.util.Set;
+
+import javax.enterprise.context.ApplicationScoped;
 import javax.ws.rs.ApplicationPath;
 import javax.ws.rs.core.Application;
 
+import com.acmeair.config.FlightConfiguration;
+import com.acmeair.config.FlightLoaderRest;
+
+@ApplicationScoped
 @ApplicationPath("/")
 public class FlightServiceApp extends Application {
+  
+  @Override
+  public Set<Class<?>> getClasses() {
+    Set<Class<?>> set = new HashSet<>();
+    set.add(FlightConfiguration.class);
+    set.add(FlightLoaderRest.class);
+    set.add(FlightServiceRest.class);
+    return set;
+  }
 }

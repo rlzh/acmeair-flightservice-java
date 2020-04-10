@@ -20,7 +20,9 @@ package com.acmeair.web;
 import com.acmeair.service.FlightService;
 
 import java.io.StringReader;
+import java.text.DateFormat;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -49,6 +51,9 @@ public class FlightServiceRest {
  
   private static final JsonReaderFactory jsonReaderFactory = Json.createReaderFactory(null);
   private static final JsonBuilderFactory jsonObjectFactory  = Json.createBuilderFactory(null);
+  
+  private static final DateFormat formatter = new SimpleDateFormat("EEE MMM dd HH:mm:ss zzz yyyy");
+  
 
   /**
    * Get flights.
@@ -62,8 +67,8 @@ public class FlightServiceRest {
   public String getTripFlights(
       @FormParam("fromAirport") String fromAirport,
       @FormParam("toAirport") String toAirport,
-      @FormParam("fromDate") Date fromDate,
-      @FormParam("returnDate") Date returnDate,
+      @FormParam("fromDate") String fromDate,
+      @FormParam("returnDate") String returnDate,
       @FormParam("oneWay") boolean oneWay
       ) throws ParseException {
 
@@ -73,9 +78,9 @@ public class FlightServiceRest {
 
     // This is needed if the driver and SUT are in different time zones.
     // Example, if your driver is set to CDT, and your SUT is a docker container defaulting to UTC.
-    Date fromDateZero = setHoursToZero(fromDate);
-    Date returnDateZero = setHoursToZero(returnDate);
-    
+    Date fromDateZero = setHoursToZero(formatter.parse(fromDate));
+    Date returnDateZero = setHoursToZero(formatter.parse(returnDate));
+            
     return getFlightOptions(fromAirport,toAirport,fromDateZero,returnDateZero,oneWay);
   }
 
