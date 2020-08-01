@@ -22,6 +22,13 @@ spec:
           - containerPort: 9080
           - containerPort: 9443
         imagePullPolicy: Always
+        resources:
+          requests:
+            cpu: "300m"
+            memory: "512Mi"
+          limits:
+            cpu: "2500m"
+            memory: "512Mi"
         env:
         - name: USERNAME
           value: admin
@@ -36,13 +43,15 @@ spec:
             path: /health
             port: 9080
           initialDelaySeconds: 10
-          periodSeconds: 5
+          periodSeconds: 9
+          timeoutSeconds: 8
         livenessProbe:
           httpGet:
             path: /health
             port: 9080
           initialDelaySeconds: 120
           periodSeconds: 15
+          timeoutSeconds: 10
 ---
 apiVersion: v1
 kind: Service
@@ -101,7 +110,10 @@ spec:
         ports:
         - containerPort: 27017
           protocol: TCP
-        resources: {}
+        resources: 
+          limits:
+            cpu: "80m"
+            memory: "100Mi"
         volumeMounts:
           - name: acmeair-flight-db-1
             mountPath: /data/configdb
