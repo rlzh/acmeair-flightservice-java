@@ -9,7 +9,7 @@
   <httpEndpoint id="defaultHttpEndpoint" host="*"
                 httpPort="9080" httpsPort="9443">
   </httpEndpoint>
-   
+  <mpMetrics authentication="false" />
   <quickStartSecurity userName="${env.USERNAME}" userPassword="${env.PASSWORD}" />
 
   <webApplication name="acmeair-flightservice" location="acmeair-flightservice-java-3.3.war" contextRoot="/flight">
