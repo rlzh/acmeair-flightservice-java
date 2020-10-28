@@ -1,4 +1,5 @@
 -Xmx512m
+-verbose:gc
 -Dcom.sun.management.jmxremote
 -Dhttp.keepalive=true
 -Dhttp.maxConnections=100
