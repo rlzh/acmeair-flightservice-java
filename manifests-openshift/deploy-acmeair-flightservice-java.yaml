@@ -112,10 +112,7 @@ spec:
           protocol: TCP
         resources: 
           limits:
-            cpu: "200m"
-            memory: "100Mi"
-          requests: 
-            cpu: "20m"
+            cpu: "80m"
             memory: "100Mi"
         volumeMounts:
           - name: acmeair-flight-db-1
