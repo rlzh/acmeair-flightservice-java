@@ -14,6 +14,7 @@ spec:
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9080"
+        pull-timestamp: "0"
     spec:
       containers:
       - name: acmeair-flightservice-java
